@@ -4,9 +4,9 @@
 ## How to Run
 
 1. Clone Repository
-2. Put Service Account json on directory
 3. Activate Virtual Environment `venv\Scripts\Activate`
-4. python box_score_scraper.py
+4. python etl.py
+5. python elt.py
 
 
 ## Output Data Storage
