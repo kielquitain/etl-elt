@@ -1,0 +1,124 @@
+"""NBA SCRAPER"""
+import pandas as pd
+from bs4 import BeautifulSoup
+import requests
+import io
+from random import randint
+import time
+import gspread
+import gspread_dataframe as gd
+from datetime import datetime, timedelta
+import re
+import sys
+
+
+def get_box_scores(daily_url):
+    """Get all of the box scores daily"""
+    soup = soupify(daily_url)
+    box_scores_list = []
+    box_scores = soup.find_all(lambda tag:tag.name=="a" and "Box Score" == tag.text)
+
+    for box_score in box_scores:
+        box_scores_list.append(
+            'https://www.basketball-reference.com/' + box_score['href']
+        )
+    return box_scores_list
+
+def extract(box_score_url):
+    """Scrape the box scores"""
+    soup = soupify(box_score_url)
+    title = soup.find('title').text
+    tables = soup.find_all('table', {'id': re.compile(r'box-([A-Z]{3})-game-basic')})
+    tables_str = io.StringIO(str(tables))
+    tables = pd.read_html(tables_str, header=1, flavor='bs4')
+    print("Extracted")
+    return [tables, title]
+    # Team 1
+
+def transform(tables, title):
+    """Transform extracted data"""
+    team1_table = tables[0]
+    team1_name = title.split(', ')[0].split('vs')[0].strip()
+    team1_table.rename(columns={'Starters': 'Players'}, inplace=True)
+    team1_df = team1_table.drop(team1_table[team1_table['MP'] == 'MP'].index)
+    team1_df = team1_df.drop(team1_df[team1_df['Players'] == 'Team Totals'].index)
+    team1_df.columns.values[20] = "Plus/Minus"
+    team1_df['Team'] = team1_name
+    # Team 2
+    team2_table = tables[1]
+    team2_name = title.split(', ')[0].split('vs')[1].strip()
+    team2_table.rename(columns={'Starters': 'Players'}, inplace=True)
+    team2_df = team2_table.drop(team2_table[team2_table['MP'] == 'MP'].index)
+    team2_df = team2_df.drop(team2_df[team2_df['Players'] == 'Team Totals'].index)
+    team2_df.columns.values[20] = "Plus/Minus"
+    team2_df['Team'] = team2_name
+    
+    combined_df = pd.concat([team1_df, team2_df])
+    combined_df['Game Date'] = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+    combined_df = combined_df[combined_df['MP'] != 'Did Not Play']
+    print("Transformed")
+    return combined_df
+
+def load(all_dfs):
+    """Load data to the Gsheet Database"""
+    gc = gspread.service_account('service_account.json')
+    ws = gc.open("ETL VS ELT")
+    """Load data to the Gsheet Database"""
+    final_df = pd.concat(all_dfs)
+    final_df.fillna(0, inplace=True)
+    for _, val in final_df.iterrows():
+        tries = 0
+        while tries <= 5:
+            try:
+                values = val.values.tolist()
+                print('values: ', values)
+                print('--------------')
+                ws.values_append("ETL", {'valueInputOption': 'USER_ENTERED'}, {'values': [values]})
+                time.sleep(randint(1, 2))
+                print("Loaded")
+                break
+            except Exception as e:
+                tries+=1
+                print(f'Try: {tries}')
+                print('Error: ', e)
+                continue
+
+def soupify(url):
+    "Get soup object from html"
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'html.parser')
+    return soup
+
+def main():
+    """Functions here"""
+    # day = (datetime.today() - timedelta(days=1)).day
+    # month = datetime.today().month
+    # year = datetime.today().year
+    day = 15
+    month = 2
+    year = 2024
+    base_url = f'https://www.basketball-reference.com/boxscores/?month={month}&day={day}&year={year}'
+    print('Base URL: ', base_url)
+    box_score_urls = get_box_scores(daily_url=base_url)
+
+    if len(box_score_urls) < 1:
+        print('No Box Score Available')
+        sys.exit()
+
+    all_dfs = []
+
+    for url in box_score_urls[:1]:
+        extracted_data = extract(url) # extract
+        transformed_data = transform(tables=extracted_data[0], title=extracted_data[1]) # transform
+        all_dfs.append(
+            transformed_data
+        )
+        time.sleep(randint(10, 15))
+        print(f'Scrape Done with URL: {url}')
+    
+    load(all_dfs) # load
+
+    
+
+if __name__ == '__main__':
+    main()
