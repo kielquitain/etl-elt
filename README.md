@@ -4,7 +4,8 @@
 ## How to Run
 
 1. Clone Repository
-3. Activate Virtual Environment `venv\Scripts\Activate`
+2. Activate Virtual Environment `venv\Scripts\Activate`
+3. pip install -r requirements.txt
 4. python etl.py
 5. python elt.py
 
