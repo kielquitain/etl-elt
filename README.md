@@ -11,4 +11,4 @@ A Python implementation of ETL and ELT
 
 
 ## Output Data Storage
-`https://docs.google.com/spreadsheets/d/1_6GndTYwsc3Xol99RK4HYc8A0x76tbTSUPj-117Uum4/edit#gid=1479659453`
+`https://docs.google.com/spreadsheets/d/1BZ33h1VzM6R2kKinGdQ_WlvGmAoAliCdLZggB6KRLTI/edit#gid=934332924`
