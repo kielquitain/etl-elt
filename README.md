@@ -1,5 +1,5 @@
 # ETL vs ELT
-
+`A Python implementation of ETL and ELT`
 
 ## How to Run
 
