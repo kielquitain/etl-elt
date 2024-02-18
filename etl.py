@@ -91,12 +91,12 @@ def soupify(url):
 
 def main():
     """Functions here"""
-    # day = (datetime.today() - timedelta(days=1)).day
-    # month = datetime.today().month
-    # year = datetime.today().year
-    day = 15
-    month = 2
-    year = 2024
+    day = (datetime.today() - timedelta(days=1)).day
+    month = datetime.today().month
+    year = datetime.today().year
+    # day = 15
+    # month = 2
+    # year = 2024
     base_url = f'https://www.basketball-reference.com/boxscores/?month={month}&day={day}&year={year}'
     print('Base URL: ', base_url)
     box_score_urls = get_box_scores(daily_url=base_url)
@@ -107,7 +107,7 @@ def main():
 
     all_dfs = []
 
-    for url in box_score_urls[:1]:
+    for url in box_score_urls:
         extracted_data = extract(url) # extract
         transformed_data = transform(tables=extracted_data[0], title=extracted_data[1]) # transform
         all_dfs.append(

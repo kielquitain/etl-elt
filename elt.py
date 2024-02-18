@@ -11,6 +11,9 @@ from datetime import datetime, timedelta
 import re
 import sys
 
+gc = gspread.service_account('service_account.json')
+ws = gc.open("ETL VS ELT")
+worksheet = ws.worksheet("ELT")
 
 def get_box_scores(daily_url):
     """Get all of the box scores daily"""
@@ -33,12 +36,8 @@ def extract(box_score_url):
     tables = pd.read_html(tables_str, header=1, flavor='bs4')
     print("Extracted")
     return [tables, title]
-    # Team 1
 
 def load(tables, title):
-    """Load data to the Gsheet Database"""
-    gc = gspread.service_account('service_account.json')
-    ws = gc.open("ETL VS ELT")
     # Team 1
     team1_table = tables[0]
     team1_name = title.split(', ')[0].split('vs')[0].strip()
@@ -58,6 +57,7 @@ def load(tables, title):
     
     combined_df = pd.concat([team1_df, team2_df])
     combined_df['Game Date'] = (datetime.today() - timedelta(days=1)).strftime('%Y-%m-%d')
+
     combined_df.fillna(0, inplace=True)
 
     for _, val in combined_df.iterrows():
@@ -77,17 +77,16 @@ def load(tables, title):
                 print('Error: ', e)
                 continue
     
-    worksheet = ws.worksheet("ELT")
-    out = worksheet.get_all_values()
-    df = pd.DataFrame(out)
-    
-    return df
 
 
-def transform(df):
+def transform():
     """Transform extracted data"""
-    # df.drop(df[df['MP'] == 'Did Not Play'].index)
+    out = worksheet.get_all_values()
+    df = pd.DataFrame(data=out)
+    df.columns = df.iloc[0]
+    df = df.iloc[1:]
     df = df[df['MP'] != 'Did Not Play']
+    df.to_csv('Transformed.csv', index=False)
     return df
 
 
@@ -97,11 +96,12 @@ def soupify(url):
     soup = BeautifulSoup(res.text, 'html.parser')
     return soup
 
+
 def main():
     """Functions here"""
-    # day = (datetime.today() - timedelta(days=1)).day
-    # month = datetime.today().month
-    # year = datetime.today().year
+    day = (datetime.today() - timedelta(days=1)).day
+    month = datetime.today().month
+    year = datetime.today().year
     day = 15
     month = 2
     year = 2024
@@ -113,18 +113,13 @@ def main():
         print('No Box Score Available')
         sys.exit()
 
-    all_dfs = []
-
-    for url in box_score_urls[:1]:
+    for url in box_score_urls:
         extracted_data = extract(url) # extract
-        all_dfs.append(
-            load(tables=extracted_data[0], title=extracted_data[1]) # load
-        )
+        load(tables=extracted_data[0], title=extracted_data[1]) # load
         time.sleep(randint(10, 15))
         print(f'Scrape Done with URL: {url}')
     
-    transformed_df = transform(all_dfs) # load
-    transformed_df.to_csv('Transformed.csv', index=False)
+    transform()
     
 
 if __name__ == '__main__':
